@@ -63,18 +63,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
     }));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    // Clear validation errors for the field being edited
-    setValidationErrors(prev => prev.filter(err => err.field !== name));
-    
-    setShippingAddress({
-      ...shippingAddress,
-      [name]: value
-    });
-  };
-
   const subtotal = getTotalPrice();
   const shipping = 99;
   const tax = subtotal * 0.18; // 18% GST
