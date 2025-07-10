@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { OrderProvider } from './contexts/OrderContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { LandingPage } from './pages/LandingPage';
 import { EcommercePage } from './pages/EcommercePage';
 import { AuthModal } from './components/auth/AuthModal';
@@ -60,17 +61,19 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <CartProvider>
-          <OrderProvider>
-            <FavoritesProvider>
-              <AppContent />
-            </FavoritesProvider>
-          </OrderProvider>
-        </CartProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <CartProvider>
+            <OrderProvider>
+              <FavoritesProvider>
+                <AppContent />
+              </FavoritesProvider>
+            </OrderProvider>
+          </CartProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

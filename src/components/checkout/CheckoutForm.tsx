@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, CreditCard, MapPin, User, Phone } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
+import { validateShippingAddress, getFieldError, hasFieldError, ValidationError } from '../../utils/validation';
 import { ShippingAddress } from '../../types';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
@@ -21,11 +22,21 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
     pincode: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationErrors([]);
+    
+    // Client-side validation
+    const validation = validateShippingAddress(shippingAddress);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    
     setIsLoading(true);
     
     // Simulate form processing
@@ -41,9 +52,26 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // Clear validation errors for the field being edited
+    setValidationErrors(prev => prev.filter(err => err.field !== name));
+    
+    setShippingAddress(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // Clear validation errors for the field being edited
+    setValidationErrors(prev => prev.filter(err => err.field !== name));
+    
     setShippingAddress({
       ...shippingAddress,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
@@ -61,10 +89,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              disabled={isLoading}
             >
               <X size={24} />
             </button>
           </div>
+
+          {validationErrors.length > 0 && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+              <h4 className="font-medium mb-2">Please fix the following errors:</h4>
+              <ul className="list-disc list-inside space-y-1">
+                {validationErrors.map((error, index) => (
+                  <li key={index} className="text-sm">{error.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Shipping Form */}
@@ -83,12 +123,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
                       name="name"
                       value={shippingAddress.name}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                      className={`w-full px-4 py-3 pl-10 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                        hasFieldError(validationErrors, 'name')
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                      }`}
                       placeholder="Enter your full name"
                       required
+                      disabled={isLoading}
                     />
                     <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   </div>
+                  {hasFieldError(validationErrors, 'name') && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {getFieldError(validationErrors, 'name')}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -101,12 +151,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
                       name="phone"
                       value={shippingAddress.phone}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                      className={`w-full px-4 py-3 pl-10 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                        hasFieldError(validationErrors, 'phone')
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                      }`}
                       placeholder="Enter your phone number"
                       required
+                      disabled={isLoading}
                     />
                     <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   </div>
+                  {hasFieldError(validationErrors, 'phone') && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {getFieldError(validationErrors, 'phone')}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -119,12 +179,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
                       name="address"
                       value={shippingAddress.address}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                      className={`w-full px-4 py-3 pl-10 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                        hasFieldError(validationErrors, 'address')
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                      }`}
                       placeholder="Enter your address"
                       required
+                      disabled={isLoading}
                     />
                     <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   </div>
+                  {hasFieldError(validationErrors, 'address') && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {getFieldError(validationErrors, 'address')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -137,10 +207,20 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
                       name="city"
                       value={shippingAddress.city}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                        hasFieldError(validationErrors, 'city')
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                      }`}
                       placeholder="City"
                       required
+                      disabled={isLoading}
                     />
+                    {hasFieldError(validationErrors, 'city') && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {getFieldError(validationErrors, 'city')}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -151,10 +231,20 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
                       name="state"
                       value={shippingAddress.state}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                        hasFieldError(validationErrors, 'state')
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                      }`}
                       placeholder="State"
                       required
+                      disabled={isLoading}
                     />
+                    {hasFieldError(validationErrors, 'state') && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {getFieldError(validationErrors, 'state')}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -167,10 +257,20 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ isOpen, onClose, onP
                     name="pincode"
                     value={shippingAddress.pincode}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                      hasFieldError(validationErrors, 'pincode')
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                    }`}
                     placeholder="PIN Code"
                     required
+                    disabled={isLoading}
                   />
+                  {hasFieldError(validationErrors, 'pincode') && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {getFieldError(validationErrors, 'pincode')}
+                    </p>
+                  )}
                 </div>
 
                 <button

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { validateLoginForm, getFieldError, hasFieldError, ValidationError } from '../../utils/validation';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
 interface LoginFormProps {
@@ -12,44 +13,54 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onClose, onSwitchToRegiste
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { login, loginWithGoogle } = useAuth();
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const { login, loginWithGoogle, isLoading, error, clearError } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
+    clearError();
+    setValidationErrors([]);
+
+    // Client-side validation
+    const validation = validateLoginForm(email, password);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
 
     try {
       const success = await login(email, password);
       if (success) {
         onClose();
-      } else {
-        setError('Invalid email or password');
       }
     } catch (err) {
-      setError('Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Login error:', err);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
-    setIsLoading(true);
+    clearError();
+    setValidationErrors([]);
 
     try {
       const success = await loginWithGoogle();
       if (success) {
         onClose();
-      } else {
-        setError('Google login failed');
       }
     } catch (err) {
-      setError('Google login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Google login error:', err);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    // Clear validation errors for the field being edited
+    setValidationErrors(prev => prev.filter(err => err.field !== field));
+    clearError();
+    
+    if (field === 'email') {
+      setEmail(value);
+    } else if (field === 'password') {
+      setPassword(value);
     }
   };
 
@@ -60,9 +71,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onClose, onSwitchToRegiste
         <p className="text-gray-600 dark:text-gray-400 mt-2">Sign in to your account</p>
       </div>
 
-      {error && (
+      {(error || validationErrors.length > 0) && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+          {error && <div>{error}</div>}
+          {validationErrors.map((err, index) => (
+            <div key={index}>{err.message}</div>
+          ))}
         </div>
       )}
 
@@ -75,13 +89,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onClose, onSwitchToRegiste
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className={`w-full px-4 py-3 pl-10 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                hasFieldError(validationErrors, 'email')
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
               placeholder="Enter your email"
               required
+              disabled={isLoading}
             />
             <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
           </div>
+          {hasFieldError(validationErrors, 'email') && (
+            <p className="mt-1 text-sm text-red-600">
+              {getFieldError(validationErrors, 'email')}
+            </p>
+          )}
         </div>
 
         <div>
@@ -92,10 +116,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onClose, onSwitchToRegiste
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              className={`w-full px-4 py-3 pl-10 pr-10 border rounded-lg focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                hasFieldError(validationErrors, 'password')
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
               placeholder="Enter your password"
               required
+              disabled={isLoading}
             />
             <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <button
@@ -106,6 +135,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onClose, onSwitchToRegiste
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
+          {hasFieldError(validationErrors, 'password') && (
+            <p className="mt-1 text-sm text-red-600">
+              {getFieldError(validationErrors, 'password')}
+            </p>
+          )}
         </div>
 
         <button

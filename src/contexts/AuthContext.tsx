@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService, AuthResponse } from '../services/authService';
+import { ApiError } from '../services/api';
+import { getAuthToken, removeAuthToken } from '../config/api';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -8,6 +11,8 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  error: string | null;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,87 +28,111 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is logged in on app start
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
+    const initializeAuth = async () => {
+      const token = getAuthToken();
+      if (token) {
+        try {
+          const userData = await authService.getCurrentUser();
+          setUser(userData);
+        } catch (error) {
+          console.error('Failed to get user data:', error);
+          removeAuthToken();
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
+
+  const clearError = () => {
+    setError(null);
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsLoading(true);
+      setError(null);
       
-      // Mock login - in real app, this would call your backend
-      const mockUser: User = {
-        id: '1',
-        name: 'John Doe',
-        email,
-        role: 'customer'
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      const response: AuthResponse = await authService.login({ email, password });
+      setUser(response.user);
       return true;
     } catch (error) {
-      console.error('Login failed:', error);
+      if (error instanceof ApiError) {
+        setError(error.message);
+      } else {
+        setError('Login failed. Please try again.');
+      }
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const loginWithGoogle = async (): Promise<boolean> => {
     try {
-      // Simulate Google OAuth
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsLoading(true);
+      setError(null);
       
-      const mockUser: User = {
-        id: '1',
-        name: 'John Doe',
-        email: 'john@gmail.com',
-        role: 'customer'
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      await authService.loginWithGoogle();
       return true;
     } catch (error) {
-      console.error('Google login failed:', error);
+      if (error instanceof ApiError) {
+        setError(error.message);
+      } else {
+        setError('Google login failed. Please try again.');
+      }
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsLoading(true);
+      setError(null);
       
-      const mockUser: User = {
-        id: '1',
-        name,
-        email,
-        role: 'customer'
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      const response: AuthResponse = await authService.register({ name, email, password });
+      setUser(response.user);
       return true;
     } catch (error) {
-      console.error('Registration failed:', error);
+      if (error instanceof ApiError) {
+        setError(error.message);
+      } else {
+        setError('Registration failed. Please try again.');
+      }
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      setError(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      loginWithGoogle, 
+      register, 
+      logout, 
+      isLoading, 
+      error, 
+      clearError 
+    }}>
       {children}
     </AuthContext.Provider>
   );
